@@ -243,21 +243,21 @@ def prediction(resourceid, keyname, dumpdir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # parser.add_argument("-d","--data_dir",help="path for input pc",default="/data2/lk/chair_pgt_data_point")
+    #input data to train
     parser.add_argument("-d", "--data_dir", help="path for input pc",
-                        default="../../multiple_pgt_point_2048")
+                        default="./")
     parser.add_argument("-r", "--resourceid",
                         help="number of gpu for use", type=int, default=0)
-    # parser.add_argument("-k","--keyname",help="keyname you like",default="AEparta")
+
     parser.add_argument(
         "-k", "--keyname", help="keyname you like", default="ae")
     parser.add_argument("-dm", "--dumpdir",
-                        help="dumpdir you like", default="./AutoEncoder6")
+                        help="dumpdir you like", default="./AutoEncoder")
     parser.add_argument("-pre", "--preddir",
-                        help="preddir you like", default="../AE_z_128_eac")
+                        help="preddir you like", default="./AE_z_128")
     parser.add_argument("-pref", "--predflag",
                         help="predflag you like", type=int, default=2)
-    parser.add_argument("cmd", help="train or prediction")
+    parser.add_argument("cmd", help="train or prediction", default="train")
     args = parser.parse_args()
 
     print 'dumpdir= '+args.dumpdir
