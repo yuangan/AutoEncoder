@@ -1,9 +1,7 @@
-'''
-    autoencoder.py 
-'''
-//python
-    import tensorflow as tf
-    import tflearn
+''' python
+
+import tensorflow as tf
+import tflearn
 import numpy as np
 import sys
 import os
@@ -255,3 +253,4 @@ if __name__ == '__main__':
         main(args.resourceid, args.keyname, args.dumpdir)
     if args.cmd == 'prediction':
         prediction(args.resourceid, args.keyname, args.dumpdir)
+'''
