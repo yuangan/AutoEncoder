@@ -1,12 +1,9 @@
 //
-//  GameScene.swift
-//  Kick
+//  AutoEncoder.py
+//  python
 //
-//  Created by gangan on 16/4/25.
-//  Copyright (c) 2016年 gangan. All rights reserved.
+//  
 //
-
-'''python
 import tensorflow as tf
 import tflearn
 import numpy as np
@@ -260,4 +257,3 @@ if __name__ == '__main__':
         main(args.resourceid, args.keyname, args.dumpdir)
     if args.cmd == 'prediction':
         prediction(args.resourceid, args.keyname, args.dumpdir)
-'''
