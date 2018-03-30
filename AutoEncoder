@@ -2,8 +2,8 @@
     autoencoder.py 
 '''
 //python
-import tensorflow as tf
-import tflearn
+    import tensorflow as tf
+    import tflearn
 import numpy as np
 import sys
 import os
