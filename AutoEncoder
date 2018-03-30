@@ -16,28 +16,9 @@ sys.path.append(sample_dir)
 from sampling import farthest_point_sample, gather_point
 from structural_losses import nn_distance, approx_match, match_cost
 from tf_utils import expand_scope_by_name, replicate_parameter_for_all_layers
-from BatchFetcherAE import *
 
 
-# lastbatch=None
-# lastconsumed=FETCH_BATCH_SIZE
-
-def fetch_batch():
-    # global lastbatch,lastconsumed
-    # if lastbatch is None or lastconsumed+BATCH_SIZE>FETCH_BATCH_SIZE:
-    #	lastbatch=fetchworker.fetch()
-    #	lastconsumed=0
-    # ret=[i[lastconsumed:lastconsumed+BATCH_SIZE] for i in lastbatch]
-    # lastconsumed+=BATCH_SIZE
-    ret = fetchworker.fetch()
-    return ret
-
-
-def stop_fetcher():
-    fetchworker.shutdown()
-
-
-def encoder(pc_inp, n_pc_points=2048, n_filters=[64, 128, 256, 1024], filter_sizes=[1, 1, 1, 1], strides=[1, 1, 1, 1], weight_decay=0.001,
+def encoder(pc_inp, n_pc_points=10240, n_filters=[64, 128, 256, 1024], filter_sizes=[1, 1, 1, 1], strides=[1, 1, 1, 1], weight_decay=0.001,
             b_norm=True, regularizer=None, non_linearity=tf.nn.leaky_relu, symmetry=tf.reduce_max,
             dropout_prob=None, pool_sizes=None, scope=None, reuse=False,
             padding='same', verbose=False, closing=None):
@@ -94,7 +75,7 @@ def decoder(z_inp, layer_sizes=[256, 256, 6144], b_norm=True, non_linearity=tf.n
     return layer
 
 
-def build(resourceid=0, n_pc_points=2048, latent_size=128, loss_type='cd', reg_alpha=0.1, learning_rate=3e-5, decay_steps=30000, exponential_decay=False):
+def build(resourceid=0, n_pc_points=10240, latent_size=128, loss_type='cd', reg_alpha=0.1, learning_rate=3e-5, decay_steps=30000, exponential_decay=False):
     encoder_args = {
         'n_pc_points': n_pc_points,
         'n_filters': [64, 128, 128, 256, 256, 512, 1024, 128],
@@ -111,7 +92,7 @@ def build(resourceid=0, n_pc_points=2048, latent_size=128, loss_type='cd', reg_a
         'verbose': True
     }
     with tf.device('/gpu:%d' % resourceid):
-        inp_pc = tf.placeholder(tf.float32, shape=[None, 2048, 3])
+        inp_pc = tf.placeholder(tf.float32, shape=[None, n_pc_points, 3])
         inp_sample = inp_pc
         with tf.variable_scope('discriminator_ae') as scope:
             inp = tflearn.layers.normalization.batch_normalization(inp_sample)
@@ -119,7 +100,7 @@ def build(resourceid=0, n_pc_points=2048, latent_size=128, loss_type='cd', reg_a
         with tf.variable_scope('generator_ae') as scope:
             out = decoder(z, **decoder_args)
 
-        reconstr = tf.reshape(out, [-1, 2048, 3])
+        reconstr = tf.reshape(out, [-1, n_pc_points, 3])
 
         dists_forward, _, dists_backward, _ = nn_distance(
             reconstr, inp_sample)
@@ -170,14 +151,13 @@ def main(resourceid, keyname, dumpdir):
         validloss_acc0_cd = 1e-9
         validloss_accs_emd = 0.0
         validloss_acc0_emd = 1e-9
-        fetchworker.bno = 0
-        fetchworker.start()
+
         emd_loss__0, cd_loss__0 = 0, 0
-        print 'train', ALL_SIZE
+        #step < all_dataset
         while bno < ALL_SIZE:
             t1 = t2
-            data, validating = fetch_batch()
-            assert validating != 2
+            #todo: add inputs_pc to data
+            
             if not validating:
                 #_, emd_loss__0 = sess.run([train_all_op,emd_loss],feed_dict={inp_pc:data})
                 #trainloss_accs_emd = trainloss_accs_emd*0.99+emd_loss__0
@@ -234,7 +214,6 @@ def prediction(resourceid, keyname, dumpdir):
         sum_bd=0
         for i in xrange(ALL_SIZE-TV_SIZE):
             data, validating = fetch_batch()
-            assert validating == 2
             fd,bd = sess.run(
                         [dists_forward,dists_backward], feed_dict={inp_pc: data})
             sum_fd+=fd
@@ -269,14 +248,6 @@ if __name__ == '__main__':
     print 'cmd= '+args.cmd
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
     if args.cmd == 'train':
-        global ALL_SIZE
-        ALL_SIZE = 1095*1500+TV_SIZE*200
-        fetchworker = BatchFetcherAE(args.data_dir, True, ALL_SIZE)
         main(args.resourceid, args.keyname, args.dumpdir)
-        fetchworker.shutdown()
     if args.cmd == 'prediction':
-        fetchworker = BatchFetcherAE(args.data_dir, False, ALL_SIZE)
-        fetchworker.bno = TV_SIZE
-        fetchworker.start()
         prediction(args.resourceid, args.keyname, args.dumpdir)
-        fetchworker.shutdown()
