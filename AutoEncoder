@@ -1,4 +1,11 @@
-<code>
+//
+//  GameScene.swift
+//  Kick
+//
+//  Created by gangan on 16/4/25.
+//  Copyright (c) 2016年 gangan. All rights reserved.
+//
+
 '''python
 import tensorflow as tf
 import tflearn
@@ -254,4 +261,3 @@ if __name__ == '__main__':
     if args.cmd == 'prediction':
         prediction(args.resourceid, args.keyname, args.dumpdir)
 '''
-</code>
