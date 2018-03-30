@@ -1,3 +1,4 @@
+<code>
 '''python
 import tensorflow as tf
 import tflearn
@@ -253,3 +254,4 @@ if __name__ == '__main__':
     if args.cmd == 'prediction':
         prediction(args.resourceid, args.keyname, args.dumpdir)
 '''
+</code>
