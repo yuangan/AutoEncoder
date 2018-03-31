@@ -23,6 +23,8 @@ from sampling import farthest_point_sample, gather_point
 from structural_losses import nn_distance, approx_match, match_cost
 from tf_utils import expand_scope_by_name, replicate_parameter_for_all_layers
 
+ALL_SIZE = 6400
+NUM_FILE = 64
 
 def encoder(pc_inp, n_pc_points=10240, n_filters=[64, 128, 256, 1024], filter_sizes=[1, 1, 1, 1], strides=[1, 1, 1, 1], weight_decay=0.001,
             b_norm=True, regularizer=None, non_linearity=tf.nn.leaky_relu, symmetry=tf.reduce_max,
@@ -133,8 +135,16 @@ def build(resourceid=0, n_pc_points=10240, latent_size=128, loss_type='cd', reg_
         batchnoinc = global_step.assign(global_step + 1)
     return inp_pc, inp_sample, cd_loss, emd_loss, z, reconstr, train_cd_op, train_emd_op, global_step, batchnoinc, train_all_op,dists_forward,dists_backward
 
+def readoff(path, i):
+    filepath = path[i]
+    return np.loadtxt(filepath, skiprow=2)
 
-def main(resourceid, keyname, dumpdir):
+def main(data_dir, resourceid, keyname, dumpdir):
+    path = []
+    for(root, file_dir, filenames) in os.walk(data_dir):
+        for filename in filenames:
+            path.append(root+'/'+filename)
+    print path
     if not os.path.exists(dumpdir):
         os.system("mkdir -p %s" % dumpdir)
     inp_pc, inp_sample, cd_loss, emd_loss, z, reconstr, train_cd_op, train_emd_op, global_step, batchnoinc, train_all_op,dists_forward,dists_backward = build(
@@ -144,8 +154,8 @@ def main(resourceid, keyname, dumpdir):
     config.allow_soft_placement = True
     saver = tf.train.Saver()
     with tf.Session(config=config)as sess, open('%s/%s.log' % (dumpdir, keyname), 'a') as fout:
-        #sess.run(tf.global_variables_initializer())
-        saver.restore(sess,"%s_bak2/%s.ckpt"%(dumpdir,keyname))
+        sess.run(tf.global_variables_initializer())
+        #saver.restore(sess,"%s_bak2/%s.ckpt"%(dumpdir,keyname))
         lastsave = time.time()
         bno = sess.run(global_step)  # bno
         t2 = time.time()
@@ -163,7 +173,9 @@ def main(resourceid, keyname, dumpdir):
         while bno < ALL_SIZE:
             t1 = t2
             #todo: add inputs_pc to data
-            
+            validating = 0
+            data = readoff(path, bno%NUM_FILE).reshape(1, 10240, 3)
+            print data.shape
             if not validating:
                 #_, emd_loss__0 = sess.run([train_all_op,emd_loss],feed_dict={inp_pc:data})
                 #trainloss_accs_emd = trainloss_accs_emd*0.99+emd_loss__0
@@ -204,7 +216,7 @@ def main(resourceid, keyname, dumpdir):
             bno = sess.run(global_step)
         saver.save(sess, '%s/%s.ckpt' % (dumpdir, keyname))
 
-def prediction(resourceid, keyname, dumpdir):
+def prediction(data_dir, resourceid, keyname, dumpdir):
     inp_pc, inp_sample, cd_loss, emd_loss, z, reconstr, train_cd_op, train_emd_op, global_step, batchnoinc, train_all_op,dists_forward,dists_backward = build(
         resourceid, n_pc_points, bneck, loss_type, reg_alpha, learning_rate)
     dists_forward = tf.sqrt(dists_forward)
@@ -230,14 +242,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #input data to train
     parser.add_argument("-d", "--data_dir", help="path for input pc",
-                        default="./")
+                        default="/media/iot/mydisk21/gy/data/train/Chinese/")
     parser.add_argument("-r", "--resourceid",
                         help="number of gpu for use", type=int, default=0)
 
     parser.add_argument(
         "-k", "--keyname", help="keyname you like", default="ae")
     parser.add_argument("-dm", "--dumpdir",
-                        help="dumpdir you like", default="./AutoEncoder")
+                        help="dumpdir you like", default="/media/iot/mydisk21/gy/data/AutoEncoder/")
     parser.add_argument("-pre", "--preddir",
                         help="preddir you like", default="./AE_z_128")
     parser.add_argument("-pref", "--predflag",
@@ -254,6 +266,6 @@ if __name__ == '__main__':
     print 'cmd= '+args.cmd
     os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
     if args.cmd == 'train':
-        main(args.resourceid, args.keyname, args.dumpdir)
+        main(arg.data_dir, args.resourceid, args.keyname, args.dumpdir)
     if args.cmd == 'prediction':
-        prediction(args.resourceid, args.keyname, args.dumpdir)
+        prediction(arg.data_dir, args.resourceid, args.keyname, args.dumpdir)
